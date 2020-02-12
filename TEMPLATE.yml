@@ -1,0 +1,85 @@
+# Defines the `module X` into which *all* code will be put.
+#   Mandatory!
+module: Storage
+
+# Defines how conversions in C/C++ shall happen.  Use `boehmgc-cpp` for C++,
+# or `boehmgc-c` for pure C.
+#
+# Don't worry too much about this setting at first.
+cookbook: boehmgc-cpp # Default!
+
+# Processors pipeline.  See `README.md` for details on each.
+# Defaults to the following:
+processors:
+  # Graph-refining processors:
+  - default_constructor # Create default constructors where possible
+  - function_class # Turn OOP-y C APIs into real classes
+  - inheritance # Mirror inheritance hierarchy from C++
+  - copy_structs # Copy structures as marked
+  - macros # Support for macro mapping
+  - functions # Add non-class functions
+  - filter_methods # Throw out filtered methods
+  - extern_c # Directly bind to pure C functions
+  - instantiate_containers # Actually instantiate containers
+  - enums # Add enums
+  # Preliminary generation processors:
+  - crystal_wrapper # Create Crystal wrappers
+  - virtual_override # Allow overriding C++ virtual methods
+  - cpp_wrapper # Create C++ <-> C wrappers
+  - crystal_binding # Create `lib` bindings for the C wrapper
+  - sanity_check # Shows issues, if any
+
+# Generator configuration.  These write the actual output to disk.
+generators:
+  # C++ generator
+  cpp:
+    # Output file path  (Mandatory)
+    output: tmp/storage.cpp
+    # Output file preamble  (Optional)
+    preamble: |-
+      #include "bindgen_helper.hpp"
+  # Crystal generator.  Configuration style is exactly the same.
+  crystal:
+    # You'll most likely only need the `output` option.
+    output: src/storage.cr
+
+# Defines the `ld_flags` value for the `@[Link]` directive of the generated `lib`.
+# `%` will be replaced by the path to the base-directory of your project,
+# relative to the path of the generated `.cr` file.
+library: "%/tmp/storage.o -lstdc++"
+
+# Configuration for the C++ parser.
+parser:
+  # List of files to include.  Can be relative to search-paths.
+  # This is the only required option:
+  files:
+    - storage/FsType.h
+    - storage/SimpleEtcFstab.h
+
+  # List of include search-paths.  If omitted, only the systems default paths
+  # will be searched.
+  includes:
+    - "%/libstorage-ng" # `%` expands to the absolute project root path.
+
+  # Path to the `bindgen-clang` binary.
+  binary: lib/bindgen/clang/bindgen
+
+# Map of classes to bind to.  A class inheriting another class should follow
+# *after* that base-class.
+classes:
+  "storage::SimpleEtcFstabEntry": SimpleEtcFstabEntry
+
+enums:
+  "storage::FsType": FsType
+
+containers:
+  - class: std::vector
+    type: Sequential
+    instantiations:
+      - [ "std::string" ]
+
+types:
+  "storage::SimpleEtcFstabEntry":
+    crystal_type: SimpleEtcFstabEntry
+    binding_type: SimpleEtcFstabEntry
+    copy_structure: true
